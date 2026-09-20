@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 180" width="100%" height="100%">
+  <defs>
+    <linearGradient id="favPottery" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#B35B35" />
+      <stop offset="40%" stop-color="#DE8965" />
+      <stop offset="100%" stop-color="#8E3C1B" />
+    </linearGradient>
+  </defs>
+
+  <!-- Circular protective background -->
+  <circle cx="80" cy="90" r="76" fill="#F6F4ED" stroke="#254D3F" stroke-width="4"/>
+
+  <!-- GEOMETRIC HAND -->
+  <g stroke="#1E3F32" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="miter" fill="none">
+    <path d="M 72,55 L 72,18 L 80,8 L 88,18 L 88,55" />
+    <path d="M 88,55 L 94,55 L 94,28 L 102,18 L 108,28 L 108,60" />
+    <path d="M 72,55 L 66,55 L 66,28 L 58,18 L 52,28 L 52,60" />
+    <path d="M 108,60 L 114,60 L 114,50 L 122,58 L 132,68 L 118,84 L 112,82" />
+    <path d="M 52,60 L 46,60 L 46,50 L 38,58 L 28,68 L 42,84 L 48,82" />
+    <path d="M 28,68 L 42,84 L 48,82 L 50,118 L 80,140 L 110,118 L 112,82 L 118,84 L 132,68" />
+    <path d="M 50,118 L 80,140 L 110,118" stroke-width="6" />
+  </g>
+
+  <!-- ARABESQUE -->
+  <g stroke="#C97A57" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 64,68 C 68,44 76,34 80,30 C 84,34 92,44 96,68" />
+    <path d="M 80,30 Q 80,48 70,54 Q 60,60 52,74" />
+    <path d="M 80,30 Q 80,48 90,54 Q 100,60 108,74" />
+    <path d="M 64,52 C 54,58 48,68 56,76 C 64,84 72,78 72,70" />
+    <path d="M 96,52 C 106,58 112,68 104,76 C 96,84 88,78 88,70" />
+  </g>
+
+  <!-- POTTERY JUG -->
+  <g>
+    <path d="M 73,88 L 87,88 C 86,92 84,95 85,98 C 89,102 96,108 97,118 C 98,128 92,138 87,141 L 73,141 C 68,138 62,128 63,118 C 64,108 71,102 75,98 C 76,95 74,92 73,88 Z" fill="url(#favPottery)" stroke="#A8522E" stroke-width="1.8"/>
+  </g>
+</svg>

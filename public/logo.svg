@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 360" width="100%" height="100%">
+  <defs>
+    <linearGradient id="potteryHighlight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#B35B35" />
+      <stop offset="35%" stop-color="#E09270" />
+      <stop offset="70%" stop-color="#C97A57" />
+      <stop offset="100%" stop-color="#8E3C1B" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="400" height="360" rx="24" fill="#F6F4ED"/>
+
+  <g transform="translate(120, 20)">
+    <!-- 1. GEOMETRIC HAND (الكف الأخضر العتيق) -->
+    <g stroke="#1E3F32" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="miter" fill="none">
+      <!-- Central Long Finger -->
+      <path d="M 72,55 L 72,18 L 80,8 L 88,18 L 88,55" />
+      <!-- Index Finger -->
+      <path d="M 88,55 L 94,55 L 94,28 L 102,18 L 108,28 L 108,60" />
+      <!-- Ring Finger -->
+      <path d="M 72,55 L 66,55 L 66,28 L 58,18 L 52,28 L 52,60" />
+      <!-- Outer wings / thumb & pinky -->
+      <path d="M 108,60 L 114,60 L 114,50 L 122,58 L 132,68 L 118,84 L 112,82" />
+      <path d="M 52,60 L 46,60 L 46,50 L 38,58 L 28,68 L 42,84 L 48,82" />
+      <!-- Wrist & Base -->
+      <path d="M 28,68 L 42,84 L 48,82 L 50,118 L 80,140 L 110,118 L 112,82 L 118,84 L 132,68" />
+      <path d="M 50,118 L 80,140 L 110,118" stroke-width="6" />
+    </g>
+
+    <!-- 2. ARABESQUE FILIGREE (الزخارف النباتية) -->
+    <g stroke="#C97A57" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 64,68 C 68,44 76,34 80,30 C 84,34 92,44 96,68" />
+      <path d="M 80,30 Q 80,48 70,54 Q 60,60 52,74" />
+      <path d="M 80,30 Q 80,48 90,54 Q 100,60 108,74" />
+      <path d="M 64,52 C 54,58 48,68 56,76 C 64,84 72,78 72,70 C 72,62 66,58 60,64" />
+      <path d="M 96,52 C 106,58 112,68 104,76 C 96,84 88,78 88,70 C 88,62 94,58 100,64" />
+      <path d="M 80,46 C 76,56 70,64 64,68 C 60,70 56,74 58,80 C 60,86 68,88 74,82" />
+      <path d="M 80,46 C 84,56 90,64 96,68 C 100,70 104,74 102,80 C 100,86 92,88 86,82" />
+      <path d="M 74,82 Q 80,72 86,82" />
+      <path d="M 80,62 L 80,82" stroke-width="2.5" />
+    </g>
+
+    <!-- 3. TERRACOTTA POTTERY JUG (الجرة الفخارية) -->
+    <g>
+      <ellipse cx="80" cy="144" rx="14" ry="3.5" fill="#DED7C8" />
+      <path d="M 73,88 L 87,88 C 86,92 84,95 85,98 C 89,102 96,108 97,118 C 98,128 92,138 87,141 L 73,141 C 68,138 62,128 63,118 C 64,108 71,102 75,98 C 76,95 74,92 73,88 Z" fill="url(#potteryHighlight)" stroke="#A8522E" stroke-width="1.8"/>
+      <path d="M 71,87 C 71,85 89,85 89,87 C 89,89 71,89 71,87 Z" fill="#DE8965" stroke="#A8522E" stroke-width="1.5"/>
+      <path d="M 73,99 C 64,102 63,114 70,120 C 72,121 73,120 72,118 C 67,114 67,106 74,102 Z" fill="#B8623D" />
+      <path d="M 87,99 C 96,102 97,114 90,120 C 88,121 87,120 88,118 C 93,114 93,106 86,102 Z" fill="#944322" />
+    </g>
+  </g>
+
+  <!-- Typography -->
+  <!-- Arabic Wordmark -->
+  <text x="200" y="225" text-anchor="middle" font-family="'Cairo', 'Amiri', 'Tajawal', sans-serif" font-size="52" font-weight="900" fill="#1E3F32">يَدَوِي</text>
+
+  <!-- English Wordmark -->
+  <text x="200" y="270" text-anchor="middle" font-family="'Cinzel', 'Playfair Display', serif" font-size="20" font-weight="800" letter-spacing="0.25em" fill="#1E3F32">YADAWY</text>
+
+  <!-- Subtitle Tagline requested by user -->
+  <text x="200" y="305" text-anchor="middle" font-family="'Cairo', sans-serif" font-size="16" font-weight="700" fill="#4B5563">سوق الحرف والفنون المصرية</text>
+</svg>

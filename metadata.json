@@ -1,0 +1,8 @@
+{
+  "name": "Remix يدوي | Yadawy - منصة الحرف اليدوية والفنون المصرية",
+  "description": "سوق مصري إلكتروني للحرف اليدوية، الفخار، الجلود، الكروشيه، والمنتجات الفنية الأصيلة مباشرة من أيادي الحرفيين في مصر.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
