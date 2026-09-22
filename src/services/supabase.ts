@@ -182,18 +182,20 @@ export async function signInWithEmail(
   password: string
 ): Promise<{ user: UserProfile | null; error: string | null }> {
   try {
-    const isPhone = /^\d+$/.test(identifier.trim().replace('+', ''));
+    const isPhone = /^\d+$/.test(identifier.trim().replace('+', '').replace(/\s/g, ''));
+    const loginData: any = { password };
     let emailFallback = '';
 
     if (isPhone) {
-      let phone = identifier.trim();
+      let phone = identifier.trim().replace(/\s/g, '');
       if (!phone.startsWith('+')) {
         phone = phone.startsWith('0') ? `+20${phone.substring(1)}` : `+20${phone}`;
       }
       loginData.phone = phone;
       // Fallback in case they are not "Phone Verified" in Auth yet, but have the technical email
-      const rawPhone = phone.replace('+20', '0');
-      emailFallback = `${rawPhone}@yadaway.local`;
+      const rawPhone = identifier.trim().replace(/\D/g, '');
+      const phoneForFallback = rawPhone.startsWith('0') ? rawPhone : `0${rawPhone.replace(/^20/, '')}`;
+      emailFallback = `${phoneForFallback}@yadaway.local`;
     } else {
       loginData.email = identifier.trim();
     }

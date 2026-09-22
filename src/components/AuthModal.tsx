@@ -120,7 +120,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
     } else {
       if (!name || !phone || !password) {
-        setErrorMessage('يرجى ملء جميع الحقول الإلزامية (الاسم، الهاتف، كلمة المرور).');
+        setErrorMessage('يرجى ملء الحقول الإلزامية: الاسم، رقم الموبايل، وكلمة المرور.');
         setIsLoading(false);
         return;
       }
@@ -130,20 +130,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
-      if (!/^\d{10,11}$/.test(phone)) {
-        setErrorMessage('يرجى إدخال رقم هاتف صحيح (WhatsApp)');
+      if (!/^\d{10,11}$/.test(phone.replace(/\D/g, ''))) {
+        setErrorMessage('يرجى إدخال رقم موبايل صحيح (واتساب).');
         setIsLoading(false);
         return;
       }
 
       // Generate fallback email if not provided
-      const finalEmail = email.trim() || `${phone}@yadaway.local`;
+      const rawPhone = phone.replace(/\D/g, '');
+      const finalEmail = email.trim() || `${rawPhone}@yadaway.local`;
 
       const { user, error } = await signUpWithEmail({
         email: finalEmail,
         password,
         name,
-        phone: phone.startsWith('0') ? `+20${phone.substring(1)}` : `+20${phone}`,
+        phone: rawPhone.startsWith('0') ? `+20${rawPhone.substring(1)}` : `+20${rawPhone}`,
         governorate,
         role,
         workshopName: role === 'artisan' ? workshopName : undefined
@@ -270,6 +271,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               )}
             </div>
 
+            {/* Form Fields: Starts with Phone which is now Mandatory */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-700 block">رقم الموبايل (واتساب) *</label>
+              <div className="relative">
+                <Smartphone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="tel"
+                  placeholder="01xxxxxxxxx"
+                  value={phone}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    setPhone(val.slice(0, 11));
+                  }}
+                  className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors"
+                  required
+                />
+              </div>
+              {mode === 'login' && (
+                <p className="text-[9px] text-gray-400 mt-0.5">سجل دخولك برقم الموبايل الموثق وكلمة المرور</p>
+              )}
+            </div>
+
+            {/* Main Form Content */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-700 block">
+                رقم الموبايل (واتساب) *
+              </label>
+              <div className="relative">
+                <Smartphone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="tel"
+                  placeholder="01xxxxxxxxx"
+                  value={phone}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    setPhone(val.slice(0, 11));
+                  }}
+                  className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors font-mono"
+                  required
+                />
+              </div>
+              {mode === 'login' && (
+                <p className="text-[9px] text-gray-400 mt-0.5">سجل دخولك برقم الموبايل وكلمة المرور</p>
+              )}
+            </div>
+
             {mode === 'register' && (
               <>
                 {/* Role Selection */}
@@ -354,7 +401,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 </div>
 
-                {/* Email Field (Optional in Register) */}
+                {/* Email Field (Now Optional) */}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-700 block">البريد الإلكتروني (اختياري)</label>
                   <div className="relative">
@@ -376,7 +423,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {mode !== 'forgot' && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-gray-700 block">كلمة المرور</label>
+                  <label className="text-xs font-bold text-gray-700 block">كلمة المرور *</label>
                   {mode === 'login' && (
                     <button
                       type="button"
