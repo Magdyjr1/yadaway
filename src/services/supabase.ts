@@ -153,33 +153,6 @@ export async function signUpWithEmail(params: {
       return { user: null, error: 'تعذر إنشاء الحساب، يرجى المحاولة لاحقاً.' };
     }
 
-    // Upsert into public.profiles
-    try {
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        name: params.name.trim(),
-        role: userRole,
-        phone: params.phone?.trim() || null,
-        governorate: params.governorate || 'القاهرة',
-        avatar_url: DEFAULT_USER_AVATAR
-      });
-
-      // If registered as artisan, create entry in public.artisans
-      if (userRole === 'artisan') {
-        await supabase.from('artisans').insert({
-          user_id: data.user.id,
-          name: params.name.trim(),
-          title: 'صانع وفنان يَدَوِي',
-          workshop_name: params.workshopName?.trim() || `ورشة ${params.name.trim()}`,
-          governorate: params.governorate || 'القاهرة',
-          whatsapp: params.phone?.trim() || null,
-          avatar: DEFAULT_USER_AVATAR
-        });
-      }
-    } catch (dbErr) {
-      console.warn('Profile upsert warning:', dbErr);
-    }
-
     const userProfile: UserProfile = {
       id: data.user.id,
       name: params.name.trim(),
@@ -191,6 +164,7 @@ export async function signUpWithEmail(params: {
       workshopName: params.workshopName,
       provider: 'email',
       isVerified: Boolean(data.user.email_confirmed_at),
+      isPhoneVerified: false,
       createdAt: data.user.created_at
     };
 
@@ -202,23 +176,32 @@ export async function signUpWithEmail(params: {
   }
 }
 
-// Sign in with real email & password via Supabase Auth
+// Sign in with real email OR phone & password via Supabase Auth
 export async function signInWithEmail(
-  email: string,
+  identifier: string,
   password: string
 ): Promise<{ user: UserProfile | null; error: string | null }> {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: password
-    });
+    const isPhone = /^\d+$/.test(identifier.trim().replace('+', ''));
+    const loginData: any = { password };
+
+    if (isPhone) {
+      let phone = identifier.trim();
+      if (!phone.startsWith('+')) {
+        // Assume Egypt +20 if no prefix
+        phone = phone.startsWith('0') ? `+20${phone.substring(1)}` : `+20${phone}`;
+      }
+      loginData.phone = phone;
+    } else {
+      loginData.email = identifier.trim();
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword(loginData);
 
     if (error) {
       let friendlyMessage = error.message;
       if (error.message.includes('Invalid login credentials')) {
-        friendlyMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
-      } else if (error.message.includes('Email not confirmed')) {
-        friendlyMessage = 'يرجى تأكيد بريدك الإلكتروني عبر الرسالة المرسلة إليك أولاً.';
+        friendlyMessage = 'بيانات الدخول غير صحيحة (البريد/الهاتف أو كلمة المرور).';
       }
       return { user: null, error: friendlyMessage };
     }
@@ -267,15 +250,23 @@ export async function signOutUser(): Promise<void> {
  */
 export async function checkPhoneExists(phone: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
+    // Check in verified profiles table
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('phone', phone)
+      .eq('is_phone_verified', true);
+
+    if (profileData && profileData.length > 0) return true;
+
+    // Also check in verifications table for safety
+    const { data: verifData, error: verifError } = await supabase
       .from('phone_verifications')
       .select('id')
       .eq('phone_number', phone)
-      .eq('status', 'verified')
-      .limit(1);
+      .eq('status', 'verified');
 
-    if (error) return false;
-    return data && data.length > 0;
+    return (verifData && verifData.length > 0);
   } catch {
     return false;
   }
@@ -308,7 +299,7 @@ export async function createPhoneVerification(userId: string, phoneNumber: strin
  */
 export async function initiatePasswordResetWhatsApp(phone: string): Promise<{ code: string | null; error: string | null }> {
   try {
-    // 1. Find user by phone
+    // 1. Find user by phone in verified profiles
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id')
@@ -317,10 +308,10 @@ export async function initiatePasswordResetWhatsApp(phone: string): Promise<{ co
       .maybeSingle();
 
     if (profileError || !profile) {
-      return { code: null, error: 'هذا الرقم غير مرتبط بحساب مفعل.' };
+      return { code: null, error: 'هذا الرقم غير مسجل أو غير مرتبط بحساب مفعل على المنصة.' };
     }
 
-    // 2. Create a reset request
+    // 2. Create a reset request with RESET- prefix
     return await createPhoneVerification(profile.id, phone, 'reset');
   } catch (err) {
     return { code: null, error: 'حدث خطأ أثناء محاولة استعادة كلمة المرور.' };
