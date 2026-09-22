@@ -183,20 +183,34 @@ export async function signInWithEmail(
 ): Promise<{ user: UserProfile | null; error: string | null }> {
   try {
     const isPhone = /^\d+$/.test(identifier.trim().replace('+', ''));
-    const loginData: any = { password };
+    let emailFallback = '';
 
     if (isPhone) {
       let phone = identifier.trim();
       if (!phone.startsWith('+')) {
-        // Assume Egypt +20 if no prefix
         phone = phone.startsWith('0') ? `+20${phone.substring(1)}` : `+20${phone}`;
       }
       loginData.phone = phone;
+      // Fallback in case they are not "Phone Verified" in Auth yet, but have the technical email
+      const rawPhone = phone.replace('+20', '0');
+      emailFallback = `${rawPhone}@yadaway.local`;
     } else {
       loginData.email = identifier.trim();
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword(loginData);
+    let { data, error } = await supabase.auth.signInWithPassword(loginData);
+
+    // If phone login fails, try the technical email fallback
+    if (error && isPhone && emailFallback) {
+      const secondAttempt = await supabase.auth.signInWithPassword({
+        email: emailFallback,
+        password: password
+      });
+      if (!secondAttempt.error) {
+        data = secondAttempt.data;
+        error = null;
+      }
+    }
 
     if (error) {
       let friendlyMessage = error.message;

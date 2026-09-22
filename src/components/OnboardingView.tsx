@@ -95,7 +95,9 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
   };
 
   const openWhatsAppVerification = () => {
-    const message = encodeURIComponent(verificationCode);
+    // نرسل الكود ورقم التليفون معاً في الرسالة للواتساب لسهولة التعرف عليه
+    const fullPhoneWithZero = `0${phone}`;
+    const message = encodeURIComponent(`${verificationCode} ${fullPhoneWithZero}`);
     const link = `https://wa.me/${ADMIN_WHATSAPP}?text=${message}`;
     window.open(link, '_blank');
     setIsVerifying(true);

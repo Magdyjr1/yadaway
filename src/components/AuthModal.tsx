@@ -101,14 +101,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMessage('');
     setSuccessMessage('');
 
-    if (!email || !password) {
-      setErrorMessage('يرجى ملء جميع الحقول الإلزامية.');
-      setIsLoading(false);
-      return;
-    }
-
     if (mode === 'login') {
-      const { user, error } = await signInWithEmail(email, password);
+      if (!phone || !password) {
+        setErrorMessage('يرجى إدخال رقم الهاتف وكلمة المرور.');
+        setIsLoading(false);
+        return;
+      }
+      const { user, error } = await signInWithEmail(phone, password);
       setIsLoading(false);
       if (error) {
         setErrorMessage(error);
@@ -120,8 +119,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }, 1000);
       }
     } else {
-      if (!name) {
-        setErrorMessage('يرجى إدخال الاسم بالكامل.');
+      if (!name || !phone || !password) {
+        setErrorMessage('يرجى ملء جميع الحقول الإلزامية (الاسم، الهاتف، كلمة المرور).');
         setIsLoading(false);
         return;
       }
@@ -131,17 +130,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
-      if (phone && !/^\d{10,11}$/.test(phone)) {
-        setErrorMessage('يرجى إدخال رقم هاتف صحيح');
+      if (!/^\d{10,11}$/.test(phone)) {
+        setErrorMessage('يرجى إدخال رقم هاتف صحيح (WhatsApp)');
         setIsLoading(false);
         return;
       }
 
-      const { user, error, needsEmailConfirmation } = await signUpWithEmail({
-        email,
+      // Generate fallback email if not provided
+      const finalEmail = email.trim() || `${phone}@yadaway.local`;
+
+      const { user, error } = await signUpWithEmail({
+        email: finalEmail,
         password,
         name,
-        phone: phone ? (phone.startsWith('0') ? `+20${phone.substring(1)}` : `+20${phone}`) : undefined,
+        phone: phone.startsWith('0') ? `+20${phone.substring(1)}` : `+20${phone}`,
         governorate,
         role,
         workshopName: role === 'artisan' ? workshopName : undefined
@@ -244,6 +246,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Phone Field (Mandatory for both Login and Register) */}
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-700 block">
+                رقم الموبايل (واتساب) *
+              </label>
+              <div className="relative">
+                <Smartphone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="tel"
+                  placeholder="01xxxxxxxxx"
+                  value={phone}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    setPhone(val.slice(0, 11));
+                  }}
+                  className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors"
+                  required
+                />
+              </div>
+              {mode === 'login' && (
+                <p className="text-[9px] text-gray-400 mt-0.5">سجل دخولك برقم الموبايل الموثق وكلمة المرور</p>
+              )}
+            </div>
+
             {mode === 'register' && (
               <>
                 {/* Role Selection */}
@@ -279,7 +305,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                 {/* Name Field */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-700 block">الاسم بالكامل</label>
+                  <label className="text-xs font-bold text-gray-700 block">الاسم بالكامل *</label>
                   <div className="relative">
                     <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
@@ -296,7 +322,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 {/* Workshop Name (Only for artisan) */}
                 {role === 'artisan' && (
                   <div className="space-y-1 animate-slideDown">
-                    <label className="text-xs font-bold text-gray-700 block">اسم الورشة / المشروع الحرفي</label>
+                    <label className="text-xs font-bold text-gray-700 block">اسم الورشة / المشروع الحرفي *</label>
                     <div className="relative">
                       <Store className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
@@ -311,24 +337,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 )}
 
-                {/* Phone Field */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-700 block">رقم الهاتف (اختياري)</label>
-                  <div className="relative">
-                    <Phone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="tel"
-                      placeholder="01xxxxxxxxx"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors"
-                    />
-                  </div>
-                </div>
-
                 {/* Governorate Selector */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-700 block">المحافظة</label>
+                  <label className="text-xs font-bold text-gray-700 block">المحافظة *</label>
                   <div className="relative">
                     <MapPin className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <select
@@ -342,34 +353,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </select>
                   </div>
                 </div>
+
+                {/* Email Field (Optional in Register) */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-gray-700 block">البريد الإلكتروني (اختياري)</label>
+                  <div className="relative">
+                    <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors text-left"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
               </>
             )}
-
-            {/* Email / Phone Field */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700 block">
-                {mode === 'login' ? 'رقم الهاتف' : 'البريد الإلكتروني'}
-              </label>
-              <div className="relative">
-                {mode === 'login' ? (
-                  <Smartphone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                ) : (
-                  <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                )}
-                <input
-                  type="text"
-                  placeholder={mode === 'login' ? '01xxxxxxxxx' : 'name@example.com'}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors text-left"
-                  dir="ltr"
-                  required
-                />
-              </div>
-              {mode === 'login' && (
-                <p className="text-[9px] text-gray-400 mt-0.5">سجل دخولك برقم الموبايل الموثق وكلمة المرور</p>
-              )}
-            </div>
 
             {/* Password Field */}
             {mode !== 'forgot' && (

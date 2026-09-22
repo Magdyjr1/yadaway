@@ -97,7 +97,9 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
   };
 
   const openWhatsAppReset = () => {
-    const message = encodeURIComponent(resetCode);
+    // نرسل الكود ورقم التليفون معاً في الرسالة للواتساب لسهولة التعرف عليه
+    const fullPhoneWithZero = `0${phone}`;
+    const message = encodeURIComponent(`${resetCode} ${fullPhoneWithZero}`);
     const link = `https://wa.me/${ADMIN_WHATSAPP}?text=${message}`;
     window.open(link, '_blank');
   };
