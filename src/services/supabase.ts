@@ -268,10 +268,11 @@ export async function signOutUser(): Promise<void> {
 export async function checkPhoneExists(phone: string): Promise<boolean> {
   try {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('phone_verifications')
       .select('id')
-      .eq('phone', phone)
-      .eq('is_phone_verified', true);
+      .eq('phone_number', phone)
+      .eq('status', 'verified')
+      .limit(1);
 
     if (error) return false;
     return data && data.length > 0;
