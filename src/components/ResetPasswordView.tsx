@@ -21,7 +21,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
   useEffect(() => {
     const hash = window.location.hash;
     const urlParams = new URLSearchParams(hash.split('?')[1]);
-    const codeFromUrl = urlParams.get('code');
+    const codeFromUrl = urlParams.get('code') || sessionStorage.getItem('yadawy_active_reset_code');
 
     if (codeFromUrl && codeFromUrl.startsWith('RESET-')) {
       setResetCode(codeFromUrl);
@@ -121,11 +121,14 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
       if (updateError) throw updateError;
 
       // 2. Invalidate the reset code in DB for security
-      if (resetCode) {
+      const finalCode = resetCode || sessionStorage.getItem('yadawy_active_reset_code');
+      if (finalCode) {
         await supabase
           .from('phone_verifications')
           .update({ status: 'completed' })
-          .eq('verification_code', resetCode);
+          .eq('verification_code', finalCode);
+
+        sessionStorage.removeItem('yadawy_active_reset_code');
       }
 
       // 3. Success!

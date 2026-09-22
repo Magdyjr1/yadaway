@@ -37,6 +37,7 @@ import { AuthModal } from './components/AuthModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { OnboardingView } from './components/OnboardingView';
 import { ResetPasswordView } from './components/ResetPasswordView';
+import { UpdatePasswordModal } from './components/UpdatePasswordModal';
 import { LegalView } from './components/LegalView';
 import { supabase, signOutUser, fetchUserProfile } from './services/supabase';
 import { Store, ShieldAlert, Sparkles, ShoppingBag } from 'lucide-react';
@@ -79,8 +80,9 @@ export default function App() {
   });
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isUpdatePasswordModalOpen, setIsUpdatePasswordModalOpen] = useState(false);
 
   // Custom Order Modal State
   const [isCustomOrderOpen, setIsCustomOrderOpen] = useState(false);
@@ -268,7 +270,26 @@ export default function App() {
   // --- Listen for reset navigation event & URL Detection ---
   useEffect(() => {
     const checkResetUrl = () => {
-      if (window.location.hash.includes('reset-verified') || window.location.hash.includes('code=RESET-')) {
+      const hash = window.location.hash;
+
+      if (hash.includes('reset-verified')) {
+        // Extract code if present (e.g. #reset-verified?code=RESET-123456)
+        const urlParams = new URLSearchParams(hash.split('?')[1]);
+        const code = urlParams.get('code');
+        if (code) {
+          sessionStorage.setItem('yadawy_active_reset_code', code);
+        }
+
+        // Clean URL immediately for a better user experience
+        window.history.replaceState(null, '', window.location.pathname);
+
+        // Open the dedicated Update Password modal
+        setIsUpdatePasswordModalOpen(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      if (hash.includes('code=RESET-')) {
         setCurrentView('reset-password');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -1263,6 +1284,15 @@ export default function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
+      />
+
+      <UpdatePasswordModal
+        isOpen={isUpdatePasswordModalOpen}
+        onClose={() => setIsUpdatePasswordModalOpen(false)}
+        onSuccess={() => {
+          setIsUpdatePasswordModalOpen(false);
+          handleOpenAuth('login');
+        }}
       />
 
       {/* User Profile Modal */}
