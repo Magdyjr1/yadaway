@@ -13,8 +13,8 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
   const [phone, setPhone] = useState(user.phone?.replace('+20', '') || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState<'phone' | 'otp' | 'success'>(user.phone ? 'otp' : 'phone');
-  const [otpCode, setOtpCode] = useState('');
+  const [step, setStep] = useState<'phone' | 'verify' | 'success'>(user.phone ? 'verify' : 'phone');
+  const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleSendOtp = async (e: React.FormEvent) => {
@@ -44,7 +44,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
       setIsLoading(false);
 
       if (success) {
-        setStep('otp');
+        setStep('verify');
       } else {
         setError(otpError || 'حدث خطأ أثناء إرسال كود التحقق، يرجى المحاولة لاحقاً.');
       }
@@ -56,7 +56,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (otpCode.length !== 6) {
+    if (verificationCode.length !== 6) {
       setError('يرجى إدخال كود التحقق المكون من 6 أرقام');
       return;
     }
@@ -65,7 +65,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
     setError('');
 
     try {
-      const { success, error: verifError } = await verifyOtpCode(user.id, otpCode, 'verify');
+      const { success, error: verifError } = await verifyOtpCode(user.id, verificationCode, 'verify');
 
       if (success) {
         setStep('success');
@@ -100,7 +100,48 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
             <Smartphone className="w-8 h-8" />
           </div>
 
-          {step === 'phone' ? (
+          {step === 'verify' ? (
+            <>
+              <h2 className="font-display font-black text-xl text-[#1F2937] mb-2">تأكيد رقم الهاتف</h2>
+              <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
+                لقد أرسلنا كود التفعيل إلى رقمك عبر واتساب. يرجى إدخال الرمز المكون من 6 أرقام للمتابعة.
+              </p>
+
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="flex justify-center gap-2" dir="ltr">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="------"
+                    className="w-full py-4 text-center text-2xl font-black tracking-[0.5em] rounded-2xl bg-[#F6F4ED] border-2 border-[#E6E1D3] focus:border-[#254D3F] outline-none transition-all placeholder:opacity-30"
+                    required
+                  />
+                </div>
+
+                {error && <p className="text-xs text-red-600 font-bold">{error}</p>}
+
+                <button
+                  type="submit"
+                  disabled={isVerifying}
+                  className="w-full py-4 rounded-2xl bg-[#254D3F] text-white text-sm font-bold shadow-lg hover:bg-[#1A372D] flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                  {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : 'تأكيد الرمز والدخول'}
+                </button>
+
+                <div className="flex flex-col gap-2 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setStep('phone')}
+                    className="text-[10px] text-[#254D3F] font-bold hover:underline"
+                  >
+                    تغيير رقم الموبايل؟
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : (
             <>
               <h2 className="font-display font-black text-xl text-[#1F2937] mb-2">إكمال بيانات التسجيل</h2>
               <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
@@ -152,59 +193,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
                 )}
               </form>
             </>
-          ) : (
-            <>
-              <h2 className="font-display font-black text-xl text-[#1F2937] mb-2">تأكيد رقم الهاتف</h2>
-              <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
-                لقد أرسلنا كود التفعيل إلى رقمك عبر واتساب. يرجى إدخال الرمز المكون من 6 أرقام للمتابعة.
-              </p>
-
-              <form onSubmit={handleVerifyOtp} className="space-y-4">
-                <div className="flex justify-center gap-2" dir="ltr">
-                  <input
-                    type="text"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="------"
-                    className="w-full py-4 text-center text-2xl font-black tracking-[0.5em] rounded-2xl bg-[#F6F4ED] border-2 border-[#E6E1D3] focus:border-[#254D3F] outline-none transition-all placeholder:opacity-30"
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                {error && <p className="text-xs text-red-600 font-bold">{error}</p>}
-
-                <button
-                  type="submit"
-                  disabled={isVerifying}
-                  className="w-full py-4 rounded-2xl bg-[#254D3F] text-white text-sm font-bold shadow-lg hover:bg-[#1A372D] flex items-center justify-center gap-2 transition-all active:scale-95"
-                >
-                  {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : 'تأكيد الرمز والدخول'}
-                </button>
-
-                <div className="flex flex-col gap-2 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setStep('phone')}
-                    className="text-[10px] text-[#254D3F] font-bold hover:underline"
-                  >
-                    تغيير رقم الموبايل؟
-                  </button>
-                  {onLogout && (
-                    <button
-                      type="button"
-                      onClick={onLogout}
-                      className="text-[10px] text-gray-400 hover:text-red-500"
-                    >
-                      تسجيل الخروج
-                    </button>
-                  )}
-                </div>
-              </form>
-            </>
-          )}
-        </>
+          ) }        </>
       )}
 
       <div className="mt-8 flex items-center justify-center gap-1.5 text-[10px] text-[#9CA3AF] border-t border-[#E6E1D3] pt-4">
