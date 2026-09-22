@@ -265,14 +265,30 @@ export default function App() {
     };
   }, []);
 
-  // --- Listen for reset navigation event ---
+  // --- Listen for reset navigation event & URL Detection ---
   useEffect(() => {
+    const checkResetUrl = () => {
+      if (window.location.hash.includes('reset-verified') || window.location.hash.includes('code=RESET-')) {
+        setCurrentView('reset-password');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    // Check on mount
+    checkResetUrl();
+
     const handleResetNav = () => {
       setCurrentView('reset-password');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+
     window.addEventListener('navigate-to-reset', handleResetNav);
-    return () => window.removeEventListener('navigate-to-reset', handleResetNav);
+    window.addEventListener('hashchange', checkResetUrl);
+
+    return () => {
+      window.removeEventListener('navigate-to-reset', handleResetNav);
+      window.removeEventListener('hashchange', checkResetUrl);
+    };
   }, []);
 
   // Persist products

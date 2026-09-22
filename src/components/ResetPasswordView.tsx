@@ -17,7 +17,38 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
 
   const ADMIN_WHATSAPP = '201275356468';
 
-  // Listen for real-time verification status change
+  // 1. Detect code from URL on mount
+  useEffect(() => {
+    const hash = window.location.hash;
+    const urlParams = new URLSearchParams(hash.split('?')[1]);
+    const codeFromUrl = urlParams.get('code');
+
+    if (codeFromUrl && codeFromUrl.startsWith('RESET-')) {
+      setResetCode(codeFromUrl);
+      setIsLoading(true);
+
+      // Verify code immediately
+      supabase.from('phone_verifications')
+        .select('*')
+        .eq('verification_code', codeFromUrl)
+        .eq('status', 'verified') // Bot should have marked it as verified
+        .maybeSingle()
+        .then(({ data, error }) => {
+          setIsLoading(false);
+          if (data && !error) {
+            setStep('new_password');
+          } else {
+            setError('هذا الكود غير صالح أو منتهي الصلاحية.');
+            setStep('input');
+          }
+        });
+    } else if (hash.includes('reset-verified')) {
+      // Just a hint that we should be in reset mode
+      setStep('input');
+    }
+  }, []);
+
+  // Listen for real-time verification status change (if user stays on page)
   useEffect(() => {
     if (step === 'verify' && resetCode) {
       const channel = supabase
@@ -79,16 +110,38 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
     }
 
     setIsLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-    setIsLoading(false);
+    setError('');
 
-    if (updateError) {
-      setError(updateError.message);
-    } else {
+    try {
+      // 1. Update Auth password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateError) throw updateError;
+
+      // 2. Invalidate the reset code in DB for security
+      if (resetCode) {
+        await supabase
+          .from('phone_verifications')
+          .update({ status: 'completed' })
+          .eq('verification_code', resetCode);
+      }
+
+      // 3. Success!
+      setIsLoading(false);
       setStep('success');
-      setTimeout(onSuccess, 2000);
+
+      // Clean up URL hash
+      window.location.hash = '';
+
+      setTimeout(() => {
+        onSuccess(); // This should trigger AuthModal opening in App.tsx
+      }, 2500);
+
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err.message || 'حدث خطأ أثناء تحديث كلمة المرور');
     }
   };
 
