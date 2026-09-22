@@ -271,11 +271,10 @@ export async function checkPhoneExists(phone: string): Promise<boolean> {
       .from('profiles')
       .select('id')
       .eq('phone', phone)
-      .eq('is_phone_verified', true)
-      .maybeSingle();
+      .eq('is_phone_verified', true);
 
     if (error) return false;
-    return !!data;
+    return data && data.length > 0;
   } catch {
     return false;
   }
