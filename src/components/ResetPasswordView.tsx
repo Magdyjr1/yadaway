@@ -17,7 +17,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
 
   const ADMIN_WHATSAPP = '201275356468';
 
-  // 1. Detect code from URL on mount
+  // Listen for reset navigation event & URL Detection
   useEffect(() => {
     const hash = window.location.hash;
     const urlParams = new URLSearchParams(hash.split('?')[1]);
@@ -25,55 +25,57 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
 
     if (codeFromUrl && codeFromUrl.startsWith('RESET-')) {
       setResetCode(codeFromUrl);
-      setIsLoading(true);
-
-      // Verify code immediately
-      supabase.from('phone_verifications')
-        .select('*')
-        .eq('verification_code', codeFromUrl)
-        .eq('status', 'verified') // Bot should have marked it as verified
-        .maybeSingle()
-        .then(({ data, error }) => {
-          setIsLoading(false);
-          if (data && !error) {
-            setStep('new_password');
-          } else {
-            setError('هذا الكود غير صالح أو منتهي الصلاحية.');
-            setStep('input');
-          }
-        });
-    } else if (hash.includes('reset-verified')) {
-      // Just a hint that we should be in reset mode
-      setStep('input');
+      setStep('new_password');
     }
   }, []);
 
-  // Listen for real-time verification status change (if user stays on page)
-  useEffect(() => {
-    if (step === 'verify' && resetCode) {
-      const channel = supabase
-        .channel('password_reset_updates')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'phone_verifications',
-            filter: `verification_code=eq.${resetCode}`
-          },
-          (payload) => {
-            if (payload.new.status === 'verified') {
-              setStep('new_password');
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+  const handleInitiateReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (phone.length !== 10) {
+      setError('يرجى إدخال 10 أرقام صحيحة بعد +20');
+      return;
     }
-  }, [step, resetCode]);
+
+    setIsLoading(true);
+    setError('');
+
+    const fullPhone = `+20${phone}`;
+    const { userId: uid, error: resetError } = await initiatePasswordResetWhatsApp(fullPhone);
+    setIsLoading(false);
+
+    if (resetError) {
+      setError(resetError);
+    } else if (uid) {
+      setStep('verify');
+      // In ResetPasswordView, we don't have the uid passed in props,
+      // but initiatePasswordResetWhatsApp returns it after finding the user by phone.
+      // We'll store it temporarily to verify the OTP later.
+      (window as any)._temp_reset_uid = uid;
+      (window as any)._temp_reset_phone = fullPhone;
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const uid = (window as any)._temp_reset_uid;
+    if (!uid) {
+      setError('حدث خطأ في الجلسة، يرجى المحاولة من جديد');
+      setStep('input');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    const { success, error: verifError } = await verifyOtpCode(uid, resetCode, 'reset');
+    setIsLoading(false);
+
+    if (success) {
+      setStep('new_password');
+    } else {
+      setError(verifError || 'كود التحقق غير صحيح');
+    }
+  };
 
   const handleInitiateReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,24 +204,42 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
 
       {step === 'verify' && (
         <>
-          <h2 className="font-display font-black text-xl text-[#1F2937] mb-2">تأكيد الهوية عبر واتساب</h2>
+          <h2 className="font-display font-black text-xl text-[#1F2937] mb-2">تأكيد الهوية</h2>
           <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
-            اضغط على الزر أدناه لإرسال طلب الاستعادة. <br/>
-            الكود: <span className="font-mono font-bold text-[#C97A57]">{resetCode}</span>
+            لقد أرسلنا كود استعادة كلمة المرور إلى رقمك عبر واتساب. يرجى إدخال الرمز المكون من 6 أرقام.
           </p>
 
-          <button
-            onClick={openWhatsAppReset}
-            className="w-full py-4 rounded-xl bg-[#25D366] text-white text-sm font-bold shadow-md hover:bg-[#128C7E] flex items-center justify-center gap-2 mb-4"
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span>إرسال الطلب الآن</span>
-          </button>
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div className="flex justify-center gap-2" dir="ltr">
+              <input
+                type="text"
+                maxLength={6}
+                value={resetCode}
+                onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="------"
+                className="w-full py-4 text-center text-2xl font-black tracking-[0.5em] rounded-2xl bg-[#F6F4ED] border-2 border-[#E6E1D3] focus:border-[#C97A57] outline-none transition-all placeholder:opacity-30"
+                required
+              />
+            </div>
 
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center gap-3">
-            <Loader2 className="w-4 h-4 text-amber-600 animate-spin" />
-            <span className="text-xs font-bold text-amber-800">بانتظار تأكيد الرسالة...</span>
-          </div>
+            {error && <p className="text-xs text-red-600 font-bold">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-4 rounded-2xl bg-[#C97A57] text-white text-sm font-bold shadow-lg hover:bg-[#b56846] flex items-center justify-center gap-2 transition-all active:scale-95"
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'تأكيد الكود ومتابعة'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStep('input')}
+              className="text-[10px] text-[#C97A57] font-bold hover:underline"
+            >
+              تغيير رقم الموبايل؟
+            </button>
+          </form>
         </>
       )}
 

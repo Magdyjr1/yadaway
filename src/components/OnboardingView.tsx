@@ -82,25 +82,40 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
       return; // Stop processing immediately
     }
 
-    // 1. Create verification request (We skip updateProfile until verified)
-    const { code, error: verifError } = await createPhoneVerification(user.id, fullPhone);
+    // 1. Send OTP via Bot API
+    const { success, error: otpError } = await sendOtpViaWhatsApp(user.id, fullPhone, 'verify');
     setIsLoading(false);
 
-    if (verifError) {
-      setError('حدث خطأ أثناء إنشاء طلب التحقق، يرجى المحاولة لاحقاً.');
-    } else if (code) {
-      setVerificationCode(code);
+    if (success) {
       setStep('verify');
+    } else {
+      setError(otpError || 'حدث خطأ أثناء إرسال كود التحقق، يرجى المحاولة لاحقاً.');
     }
   };
 
-  const openWhatsAppVerification = () => {
-    // نرسل الكود ورقم التليفون معاً في الرسالة للواتساب لسهولة التعرف عليه
-    const fullPhoneWithZero = `0${phone}`;
-    const message = encodeURIComponent(`${verificationCode} ${fullPhoneWithZero}`);
-    const link = `https://wa.me/${ADMIN_WHATSAPP}?text=${message}`;
-    window.open(link, '_blank');
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (verificationCode.length !== 6) {
+      setError('يرجى إدخال كود التحقق المكون من 6 أرقام');
+      return;
+    }
+
     setIsVerifying(true);
+    setError('');
+
+    const { success, error: verifError } = await verifyOtpCode(user.id, verificationCode, 'verify');
+    setIsVerifying(false);
+
+    if (success) {
+      setStep('success');
+      setTimeout(() => {
+        fetchUserProfile(user.id).then(updated => {
+          if (updated) onComplete(updated);
+        });
+      }, 2000);
+    } else {
+      setError(verifError || 'كود التحقق غير صحيح، يرجى المحاولة مرة أخرى');
+    }
   };
 
   return (
@@ -123,7 +138,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
             <>
               <h2 className="font-display font-black text-xl text-[#1F2937] mb-2">إكمال بيانات التسجيل</h2>
               <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
-                أهلاً بك في يدوي! يرجى إضافة رقم الواتساب الخاص بك لمتابعة طلباتك والتواصل مع الحرفيين.
+                أهلاً بك في يدوي! يرجى إضافة رقم الواتساب الخاص بك لتلقي كود التفعيل ومتابعة طلباتك.
               </p>
 
               <form onSubmit={handleSavePhone} className="space-y-4">
@@ -147,7 +162,6 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
                       required
                     />
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-2 text-center">ادخل الرقم (مثال: 1012345678)</p>
                 </div>
 
                 {error && <p className="text-xs text-red-600 font-bold">{error}</p>}
@@ -157,7 +171,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
                   disabled={isLoading}
                   className="w-full py-3 rounded-xl bg-[#254D3F] text-white text-sm font-bold shadow-md hover:bg-[#1A372D] flex items-center justify-center gap-2"
                 >
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ ومتابعة'}
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إرسال كود التفعيل'}
                   <ArrowRight className="w-4 h-4 rotate-180" />
                 </button>
 
@@ -174,47 +188,53 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
             </>
           ) : (
             <>
-              <h2 className="font-display font-black text-xl text-[#1F2937] mb-2">تأكيد رقم الهاتف عبر واتساب</h2>
+              <h2 className="font-display font-black text-xl text-[#1F2937] mb-2">تأكيد رقم الهاتف</h2>
               <p className="text-sm text-[#6B7280] mb-6 leading-relaxed">
-                اضغط على الزر أدناه لإرسال كود التأكيد الخاص بك. <br/>
-                كود التأكيد: <span className="font-mono font-bold text-[#C97A57]">{verificationCode}</span>
+                لقد أرسلنا كود التفعيل إلى رقمك عبر واتساب. يرجى إدخال الرمز المكون من 6 أرقام للمتابعة.
               </p>
 
-              <button
-                onClick={openWhatsAppVerification}
-                className="w-full py-4 rounded-xl bg-[#25D366] text-white text-sm font-bold shadow-md hover:bg-[#128C7E] flex items-center justify-center gap-2 mb-4 transition-all active:scale-95"
-              >
-                <MessageSquare className="w-5 h-5" />
-                <span>إرسال كود التأكيد عبر واتساب</span>
-              </button>
-
-              {isVerifying && (
-                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center gap-3 mb-4">
-                  <Loader2 className="w-4 h-4 text-emerald-600 animate-spin" />
-                  <span className="text-xs font-bold text-emerald-800">بانتظار استلام رسالتك...</span>
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="flex justify-center gap-2" dir="ltr">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="------"
+                    className="w-full py-4 text-center text-2xl font-black tracking-[0.5em] rounded-2xl bg-[#F6F4ED] border-2 border-[#E6E1D3] focus:border-[#254D3F] outline-none transition-all placeholder:opacity-30"
+                    required
+                  />
                 </div>
-              )}
 
-              <p className="text-[11px] text-[#9CA3AF] leading-relaxed">
-                لا تغلق هذه الصفحة. سيتم تفعيل حسابك تلقائياً بمجرد إرسال الرسالة من تطبيق واتساب الخاص بك.
-              </p>
+                {error && <p className="text-xs text-red-600 font-bold">{error}</p>}
 
-              <div className="flex flex-col gap-2 mt-4">
                 <button
-                  onClick={() => setStep('phone')}
-                  className="text-[10px] text-[#254D3F] font-bold hover:underline"
+                  type="submit"
+                  disabled={isVerifying}
+                  className="w-full py-4 rounded-2xl bg-[#254D3F] text-white text-sm font-bold shadow-lg hover:bg-[#1A372D] flex items-center justify-center gap-2 transition-all active:scale-95"
                 >
-                  تغيير رقم الموبايل؟
+                  {isVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : 'تأكيد الرمز والدخول'}
                 </button>
-                {onLogout && (
+
+                <div className="flex flex-col gap-2 mt-4">
                   <button
-                    onClick={onLogout}
-                    className="text-[10px] text-gray-400 hover:text-red-500"
+                    type="button"
+                    onClick={() => setStep('phone')}
+                    className="text-[10px] text-[#254D3F] font-bold hover:underline"
                   >
-                    تسجيل الخروج
+                    تغيير رقم الموبايل؟
                   </button>
-                )}
-              </div>
+                  {onLogout && (
+                    <button
+                      type="button"
+                      onClick={onLogout}
+                      className="text-[10px] text-gray-400 hover:text-red-500"
+                    >
+                      تسجيل الخروج
+                    </button>
+                  )}
+                </div>
+              </form>
             </>
           )}
         </>

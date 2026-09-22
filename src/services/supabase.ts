@@ -310,10 +310,55 @@ export async function createPhoneVerification(userId: string, phoneNumber: strin
   }
 }
 
+// --- WhatsApp OTP (Automatic Flow) ---
+
+const BOT_URL = import.meta.env.VITE_BOT_URL || 'http://localhost:3000';
+
 /**
- * Resets password flow via WhatsApp
+ * Sends OTP to user's WhatsApp via Bot API
  */
-export async function initiatePasswordResetWhatsApp(phone: string): Promise<{ code: string | null; error: string | null }> {
+export async function sendOtpViaWhatsApp(userId: string, phone: string, mode: 'verify' | 'reset'): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const response = await fetch(`${BOT_URL}/api/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, phone, mode })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'فشل في إرسال الكود');
+
+    return { success: true, error: null };
+  } catch (err: any) {
+    console.error('sendOtpViaWhatsApp error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Verifies OTP code via Bot API
+ */
+export async function verifyOtpCode(userId: string, code: string, mode: 'verify' | 'reset'): Promise<{ success: boolean; error: string | null }> {
+  try {
+    const response = await fetch(`${BOT_URL}/api/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, code, mode })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'كود غير صحيح');
+
+    return { success: true, error: null };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Resets password flow via WhatsApp OTP
+ */
+export async function initiatePasswordResetWhatsApp(phone: string): Promise<{ userId: string | null; error: string | null }> {
   try {
     // 1. Find user by phone in verified profiles
     const { data: profile, error: profileError } = await supabase
@@ -324,13 +369,15 @@ export async function initiatePasswordResetWhatsApp(phone: string): Promise<{ co
       .maybeSingle();
 
     if (profileError || !profile) {
-      return { code: null, error: 'هذا الرقم غير مسجل أو غير مرتبط بحساب مفعل على المنصة.' };
+      return { userId: null, error: 'هذا الرقم غير مسجل أو غير مرتبط بحساب مفعل على المنصة.' };
     }
 
-    // 2. Create a reset request with RESET- prefix
-    return await createPhoneVerification(profile.id, phone, 'reset');
+    // 2. Send OTP
+    const { success, error } = await sendOtpViaWhatsApp(profile.id, phone, 'reset');
+
+    return { userId: success ? profile.id : null, error };
   } catch (err) {
-    return { code: null, error: 'حدث خطأ أثناء محاولة استعادة كلمة المرور.' };
+    return { userId: null, error: 'حدث خطأ أثناء محاولة استعادة كلمة المرور.' };
   }
 }
 

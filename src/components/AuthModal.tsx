@@ -11,11 +11,12 @@ import {
   Smartphone,
   MapPin,
   Store,
-  ShoppingBag
+  ShoppingBag,
+  Loader2
 } from 'lucide-react';
 import { UserProfile, UserRole, DEFAULT_USER_AVATAR } from '../types';
 import { YadawyEmblem } from './YadawyLogo';
-import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../services/supabase';
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword } from '../services/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -59,8 +60,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   // ── Forgot Password Logic ───────────────────────────────────────────────
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      setErrorMessage('يرجى إدخال البريد الإلكتروني أولاً.');
+    if (!phone) {
+      setErrorMessage('يرجى إدخال رقم الهاتف أولاً.');
       return;
     }
 
@@ -68,14 +69,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMessage('');
     setSuccessMessage('');
 
-    const { error } = await resetPassword(email);
+    // Open reset password view or handle via WhatsApp logic
+    onClose();
+    window.dispatchEvent(new CustomEvent('navigate-to-reset'));
     setIsLoading(false);
-
-    if (error) {
-      setErrorMessage(error);
-    } else {
-      setSuccessMessage('تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح!');
-    }
   };
 
   // ── Google OAuth ──────────────────────────────────────────────────────────
@@ -119,6 +116,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }, 1000);
       }
     } else {
+      // Register mode
       if (!name || !phone || !password) {
         setErrorMessage('يرجى ملء الحقول الإلزامية: الاسم، رقم الموبايل، وكلمة المرور.');
         setIsLoading(false);
@@ -130,14 +128,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
-      if (!/^\d{10,11}$/.test(phone.replace(/\D/g, ''))) {
+      const rawPhone = phone.replace(/\D/g, '');
+      if (!/^\d{10,11}$/.test(rawPhone)) {
         setErrorMessage('يرجى إدخال رقم موبايل صحيح (واتساب).');
         setIsLoading(false);
         return;
       }
 
       // Generate fallback email if not provided
-      const rawPhone = phone.replace(/\D/g, '');
       const finalEmail = email.trim() || `${rawPhone}@yadaway.local`;
 
       const { user, error } = await signUpWithEmail({
@@ -247,57 +245,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-3.5">
+
             {/* Phone Field (Mandatory for both Login and Register) */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700 block">
-                رقم الموبايل (واتساب) *
-              </label>
-              <div className="relative">
-                <Smartphone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="tel"
-                  placeholder="01xxxxxxxxx"
-                  value={phone}
-                  onChange={(e) => {
-                    let val = e.target.value.replace(/\D/g, '');
-                    setPhone(val.slice(0, 11));
-                  }}
-                  className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors"
-                  required
-                />
-              </div>
-              {mode === 'login' && (
-                <p className="text-[9px] text-gray-400 mt-0.5">سجل دخولك برقم الموبايل الموثق وكلمة المرور</p>
-              )}
-            </div>
-
-            {/* Form Fields: Starts with Phone which is now Mandatory */}
-            <div className="space-y-1">
               <label className="text-xs font-bold text-gray-700 block">رقم الموبايل (واتساب) *</label>
-              <div className="relative">
-                <Smartphone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="tel"
-                  placeholder="01xxxxxxxxx"
-                  value={phone}
-                  onChange={(e) => {
-                    let val = e.target.value.replace(/\D/g, '');
-                    setPhone(val.slice(0, 11));
-                  }}
-                  className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors"
-                  required
-                />
-              </div>
-              {mode === 'login' && (
-                <p className="text-[9px] text-gray-400 mt-0.5">سجل دخولك برقم الموبايل الموثق وكلمة المرور</p>
-              )}
-            </div>
-
-            {/* Main Form Content */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700 block">
-                رقم الموبايل (واتساب) *
-              </label>
               <div className="relative">
                 <Smartphone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -401,7 +352,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   </div>
                 </div>
 
-                {/* Email Field (Now Optional) */}
+                {/* Email Field (Optional) */}
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-gray-700 block">البريد الإلكتروني (اختياري)</label>
                   <div className="relative">
@@ -427,7 +378,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   {mode === 'login' && (
                     <button
                       type="button"
-                      onClick={() => setMode('forgot')}
+                      onClick={() => {
+                        onClose();
+                        window.dispatchEvent(new CustomEvent('navigate-to-reset'));
+                      }}
                       className="text-[10px] font-bold text-[#C97A57] hover:underline"
                     >
                       نسيت كلمة السر؟
@@ -453,7 +407,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              onClick={mode === 'forgot' ? handleForgotPassword : undefined}
               className="w-full py-3 px-4 mt-2 rounded-xl bg-[#254D3F] hover:bg-[#1b382e] text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-60 flex items-center justify-center"
             >
               {isLoading ? (
@@ -464,20 +417,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </span>
               )}
             </button>
-
-            {mode === 'login' && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  // Dispatch event to open reset password view
-                  window.dispatchEvent(new CustomEvent('navigate-to-reset'));
-                }}
-                className="w-full text-center text-[10px] font-bold text-[#C97A57] hover:underline mt-2"
-              >
-                استعادة كلمة المرور عبر واتساب 💬
-              </button>
-            )}
 
             {mode === 'login' && (
               <button
