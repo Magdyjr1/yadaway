@@ -149,16 +149,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setIsLoading(false);
       if (error) {
         setErrorMessage(error);
-      } else {
-        if (needsEmailConfirmation) {
-          setSuccessMessage('تم إنشاء الحساب! يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب.');
-        } else if (user) {
-          setSuccessMessage('تم إنشاء الحساب وتسجيل الدخول بنجاح!');
-          setTimeout(() => {
-            onLoginSuccess(user);
-            onClose();
-          }, 1500);
-        }
+      } else if (user) {
+        setSuccessMessage('تم إنشاء الحساب بنجاح! جارٍ تحويلك لتأكيد الواتساب...');
+        setTimeout(() => {
+          onLoginSuccess(user);
+          onClose();
+        }, 1500);
       }
     }
   };

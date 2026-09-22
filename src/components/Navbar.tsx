@@ -126,6 +126,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Subtle status/auth hint */}
           <div className="hidden sm:flex items-center gap-3 text-[11px]">
+            {currentUser?.email === 'magdynada22223@gmail.com' && (
+              <>
+                <button
+                  onClick={() => onNavigate('super-admin')}
+                  className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] animate-pulse cursor-pointer shadow-sm"
+                  title="لوحة تحكم المشرف العام"
+                >
+                  👑 لوحة المشرف العام
+                </button>
+                <span>|</span>
+              </>
+            )}
             {!currentUser ? (
               <>
                 <button
