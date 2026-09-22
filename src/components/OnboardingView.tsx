@@ -17,7 +17,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
   const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  const ADMIN_WHATSAPP = '201275336468'; // Official Yadawy Bot Number
+  const ADMIN_WHATSAPP = '201275356468'; // Official Yadawy Bot Number
 
   // 1. Listen for real-time verification status change
   useEffect(() => {

@@ -74,7 +74,7 @@ const BUSINESS_HOURS = {
   hoursText: '9:00 ص - 11:00 م'
 };
 
-const OFFICIAL_WHATSAPP_NUMBER = '201002345678'; // Official Yadawy Support Hotline
+const OFFICIAL_WHATSAPP_NUMBER = '201275356468'; // Official Yadawy Support Hotline
 
 const COMMON_QUESTIONS = [
   {

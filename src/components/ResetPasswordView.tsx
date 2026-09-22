@@ -15,7 +15,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
   const [step, setStep] = useState<'input' | 'verify' | 'new_password' | 'success'>('input');
   const [resetCode, setResetCode] = useState('');
 
-  const ADMIN_WHATSAPP = '201275336468';
+  const ADMIN_WHATSAPP = '201275356468';
 
   // Listen for real-time verification status change
   useEffect(() => {
