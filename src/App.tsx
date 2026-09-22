@@ -638,6 +638,15 @@ export default function App() {
     } catch {
       // ignore
     }
+    // If just verified, redirect to dashboard or home
+    if (updated.isPhoneVerified) {
+      if (updated.role === 'artisan') {
+        setCurrentView('dashboard');
+      } else {
+        setCurrentView('home');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // Showcase & Bazaar Handlers
@@ -846,7 +855,7 @@ export default function App() {
 
       {/* Main Content Router */}
       <main className="flex-1">
-        {currentUser && !currentUser.isPhoneVerified && currentView !== 'support' ? (
+        {currentUser && !currentUser.isPhoneVerified && currentView !== 'support' && currentView !== 'reset-password' ? (
           <OnboardingView
             user={currentUser}
             onComplete={(updated) => handleUpdateUser(updated)}
@@ -1087,12 +1096,61 @@ export default function App() {
           />
         )}
 
+        {/* Super Admin Dashboard Integration Component */}
+        {currentView === 'super-admin' && currentUser?.email === 'magdynada22223@gmail.com' && (
+          <SuperAdminDashboard
+            orders={orders}
+            products={products}
+            showcaseItems={showcaseItems}
+            supportTickets={supportTickets}
+            onAdminReply={handleAdminReply}
+            onApproveProduct={(id) => {
+              setProducts(prev => prev.map(p => p.id === id ? { ...p, isFeatured: true } : p));
+            }}
+            onRejectProduct={(id) => {
+              setProducts(prev => prev.filter(p => p.id !== id));
+            }}
+            onApproveShowcaseItem={(id) => {
+              setShowcaseItems(prev => prev.map(s => s.id === id ? { ...s, featured: true } : s));
+            }}
+            onRejectShowcaseItem={(id) => {
+              setShowcaseItems(prev => prev.filter(s => s.id !== id));
+            }}
+            onBack={() => setCurrentView('home')}
+          />
+        )}
+
         {/* Legal Policies: Terms & Privacy */}
         {currentView === 'legal' && (
           <LegalView
             onBack={() => setCurrentView('home')}
           />
         )}
+
+        {/* Super Admin Dashboard Integration Component */}
+        {currentView === 'super-admin' && currentUser?.email === 'magdynada22223@gmail.com' && (
+          <SuperAdminDashboard
+            orders={orders}
+            products={products}
+            showcaseItems={showcaseItems}
+            supportTickets={supportTickets}
+            onAdminReply={handleAdminReply}
+            onApproveProduct={(id) => {
+              setProducts(prev => prev.map(p => p.id === id ? { ...p, isFeatured: true } : p));
+            }}
+            onRejectProduct={(id) => {
+              setProducts(prev => prev.filter(p => p.id !== id));
+            }}
+            onApproveShowcaseItem={(id) => {
+              setShowcaseItems(prev => prev.map(s => s.id === id ? { ...s, featured: true } : s));
+            }}
+            onRejectShowcaseItem={(id) => {
+              setShowcaseItems(prev => prev.filter(s => s.id !== id));
+            }}
+            onBack={() => setCurrentView('home')}
+          />
+        )}
+
 
         {/* Bazaar - National Artisans Showcase Feed */}
         {currentView === 'bazaar' && (

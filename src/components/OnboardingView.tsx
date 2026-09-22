@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Smartphone, CheckCircle2, ArrowRight, ShieldCheck, Loader2, MessageSquare } from 'lucide-react';
 import { UserProfile } from '../types';
-import { updateProfile, createPhoneVerification, supabase, checkPhoneExists } from '../services/supabase';
+import { updateProfile, createPhoneVerification, supabase, checkPhoneExists, fetchUserProfile } from '../services/supabase';
 
 interface OnboardingViewProps {
   user: UserProfile;
@@ -22,23 +22,25 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
   // 1. Listen for real-time verification status change
   useEffect(() => {
     if (step === 'verify' && verificationCode) {
+      // Since the profile is only created AFTER verification, we listen for INSERT into profiles
       const channel = supabase
-        .channel('phone_verification_updates')
+        .channel('profile_creation')
         .on(
           'postgres_changes',
           {
-            event: 'UPDATE',
+            event: 'INSERT',
             schema: 'public',
-            table: 'phone_verifications',
-            filter: `verification_code=eq.${verificationCode}`
+            table: 'profiles',
+            filter: `id=eq.${user.id}`
           },
-          (payload) => {
-            if (payload.new.status === 'verified') {
-              setStep('success');
-              setTimeout(() => {
-                onComplete({ ...user, phone: `+20${phone}`, isPhoneVerified: true });
-              }, 2000);
-            }
+          () => {
+            setStep('success');
+            setTimeout(() => {
+              // Re-fetch profile and complete onboarding
+              fetchUserProfile(user.id).then(updated => {
+                if (updated) onComplete(updated);
+              });
+            }, 2000);
           }
         )
         .subscribe();
@@ -47,7 +49,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
         supabase.removeChannel(channel);
       };
     }
-  }, [step, verificationCode, onComplete, user, phone]);
+  }, [step, verificationCode, onComplete, user.id]);
 
   // If we already have a phone from previous session, generate a code immediately
   useEffect(() => {

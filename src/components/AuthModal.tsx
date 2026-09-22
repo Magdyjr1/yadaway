@@ -412,6 +412,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 type="button"
                 onClick={() => {
                   onClose();
+                  // Dispatch event to open reset password view
+                  window.dispatchEvent(new CustomEvent('navigate-to-reset'));
+                }}
+                className="w-full text-center text-[10px] font-bold text-[#C97A57] hover:underline mt-2"
+              >
+                استعادة كلمة المرور عبر واتساب 💬
+              </button>
+            )}
+
+            {mode === 'login' && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
                   window.dispatchEvent(new CustomEvent('navigate-to-reset'));
                 }}
                 className="w-full text-center text-[10px] font-bold text-[#C97A57] hover:underline mt-2"

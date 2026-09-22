@@ -67,8 +67,14 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
     }
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user && !profile) return null;
+    if (!user) return null;
 
+    if (error && error.code !== 'PGRST116') {
+      console.warn('Error fetching user profile:', error.message);
+    }
+
+    // If no profile row exists, the user is not verified yet
+    // Fallback to Auth metadata
     return {
       id: userId,
       name: profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'مستخدم يَدَوِي',
@@ -79,7 +85,7 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
       governorate: profile?.governorate || user?.user_metadata?.governorate || 'القاهرة',
       provider: (user?.app_metadata?.provider === 'google' ? 'google' : 'email') as 'google' | 'email',
       isVerified: Boolean(user?.email_confirmed_at),
-      isPhoneVerified: Boolean(profile?.is_phone_verified),
+      isPhoneVerified: Boolean(profile), // Profile only exists after verification
       createdAt: profile?.created_at || user?.created_at || new Date().toISOString()
     };
   } catch (err) {
