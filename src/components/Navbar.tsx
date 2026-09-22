@@ -20,7 +20,7 @@ import { CartItem, UserProfile, Category, DEFAULT_USER_AVATAR, Product, Artisan,
 import { YadawyLogo } from './YadawyLogo';
 import { SmartSearchModal } from './SmartSearchModal';
 
-export type AppView = 'home' | 'product' | 'dashboard' | 'checkout' | 'favorites' | 'catalog' | 'storefront' | 'tracking' | 'support' | 'bazaar' | 'vendor-showcase' | 'super-admin' | 'legal' | 'reset-password';
+export type AppView = 'home' | 'product' | 'dashboard' | 'checkout' | 'favorites' | 'catalog' | 'storefront' | 'tracking' | 'support' | 'bazaar' | 'vendor-showcase' | 'legal' | 'reset-password';
 
 interface NavbarProps {
   currentView: AppView;
@@ -126,15 +126,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Subtle status/auth hint */}
           <div className="hidden sm:flex items-center gap-3 text-[11px]">
-            {/* Quick Demo Access to Super Admin */}
-            <button
-              onClick={() => onNavigate('super-admin')}
-              className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] animate-pulse cursor-pointer shadow-sm"
-              title="لوحة تحكم المشرف العام"
-            >
-              👑 لوحة المشرف العام
-            </button>
-            <span>|</span>
             {!currentUser ? (
               <>
                 <button

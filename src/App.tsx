@@ -37,8 +37,7 @@ import { AuthModal } from './components/AuthModal';
 import { UserProfileModal } from './components/UserProfileModal';
 import { OnboardingView } from './components/OnboardingView';
 import { ResetPasswordView } from './components/ResetPasswordView';
-// import { SuperAdminDashboard } from './components/SuperAdminDashboard';
-// import { LegalView } from './components/LegalView';
+import { LegalView } from './components/LegalView';
 import { supabase, signOutUser, fetchUserProfile } from './services/supabase';
 import { Store, ShieldAlert, Sparkles, ShoppingBag } from 'lucide-react';
 
@@ -263,18 +262,6 @@ export default function App() {
 
     return () => {
       subscription.unsubscribe();
-    };
-  }, []);
-
-  // --- Hotkey for Super Admin Access (Ctrl + Shift + A) ---
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
-        e.preventDefault();
-        setCurrentView('super-admin');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        alert('🌿 تم الدخول إلى لوحة التحكم العليا للمشرف (Super Admin Dashboard)');
-      }
     };
   }, []);
 
@@ -1006,13 +993,6 @@ export default function App() {
                   <Sparkles className="w-4 h-4" />
                   <span>ترقية حسابي إلى صانع الآن (مجاناً)</span>
                 </button>
-                {/* Secret Link to Super Admin for demo purposes - normally restricted by role check */}
-                <button
-                  onClick={() => setCurrentView('super-admin')}
-                  className="text-[10px] text-gray-300 hover:text-red-500 mt-4 transition-colors cursor-pointer"
-                >
-                  [الدخول للوحة المشرف العام - تجريبي]
-                </button>
                 <button
                   onClick={() => setCurrentView('catalog')}
                   className="text-xs text-[#6B7280] hover:underline mt-2 cursor-pointer"
@@ -1107,14 +1087,11 @@ export default function App() {
           />
         )}
 
-        {/* Super Admin Dashboard Integration Component */}
-        {currentView === 'super-admin' && (
-          <div className="p-20 text-center">لوحة المشرف قيد التحميل...</div>
-        )}
-
         {/* Legal Policies: Terms & Privacy */}
         {currentView === 'legal' && (
-          <div className="p-20 text-center">صفحة السياسات قيد التحميل...</div>
+          <LegalView
+            onBack={() => setCurrentView('home')}
+          />
         )}
 
         {/* Bazaar - National Artisans Showcase Feed */}
