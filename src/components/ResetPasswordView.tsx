@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, ShieldCheck, CheckCircle2, MessageSquare, Loader2, ArrowRight } from 'lucide-react';
-import { initiatePasswordResetWhatsApp, supabase } from '../services/supabase';
+import { Lock, ShieldCheck, CheckCircle2, Loader2 } from 'lucide-react';
+import { initiatePasswordResetWhatsApp, verifyOtpCode, supabase } from '../services/supabase';
 
 interface ResetPasswordViewProps {
   onSuccess: () => void;
@@ -13,9 +13,8 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState<'input' | 'verify' | 'new_password' | 'success'>('input');
-  const [resetCode, setResetCode] = useState('');
-
-  const ADMIN_WHATSAPP = '201275356468';
+  const [otpCode, setOtpCode] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Listen for reset navigation event & URL Detection
   useEffect(() => {
@@ -24,8 +23,13 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
     const codeFromUrl = urlParams.get('code') || sessionStorage.getItem('yadawy_active_reset_code');
 
     if (codeFromUrl && codeFromUrl.startsWith('RESET-')) {
-      setResetCode(codeFromUrl);
-      setStep('new_password');
+      // If we landed here with a code from WhatsApp link, we still need the user to set a password
+      // But we need to know WHICH user. For security, we usually verify the code first.
+      // In this new OTP flow, the user enters the code manually or it's auto-detected.
+      setOtpCode(codeFromUrl.replace('RESET-', ''));
+      // We don't have the userId yet if they just opened the link.
+      // The verify endpoint will need it.
+      // Better to let them enter the phone first to find the user.
     }
   }, []);
 
@@ -46,28 +50,28 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
     if (resetError) {
       setError(resetError);
     } else if (uid) {
+      setUserId(uid);
       setStep('verify');
-      // In ResetPasswordView, we don't have the uid passed in props,
-      // but initiatePasswordResetWhatsApp returns it after finding the user by phone.
-      // We'll store it temporarily to verify the OTP later.
-      (window as any)._temp_reset_uid = uid;
-      (window as any)._temp_reset_phone = fullPhone;
     }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const uid = (window as any)._temp_reset_uid;
-    if (!uid) {
+    if (!userId) {
       setError('حدث خطأ في الجلسة، يرجى المحاولة من جديد');
       setStep('input');
+      return;
+    }
+
+    if (otpCode.length !== 6) {
+      setError('يرجى إدخال كود التحقق المكون من 6 أرقام');
       return;
     }
 
     setIsLoading(true);
     setError('');
 
-    const { success, error: verifError } = await verifyOtpCode(uid, resetCode, 'reset');
+    const { success, error: verifError } = await verifyOtpCode(userId, otpCode, 'reset');
     setIsLoading(false);
 
     if (success) {
@@ -75,35 +79,6 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
     } else {
       setError(verifError || 'كود التحقق غير صحيح');
     }
-  };
-
-  const handleInitiateReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phone.length !== 10) {
-      setError('يرجى إدخال 10 أرقام صحيحة بعد +20');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    const { code, error: resetError } = await initiatePasswordResetWhatsApp(`+20${phone}`);
-    setIsLoading(false);
-
-    if (resetError) {
-      setError(resetError);
-    } else if (code) {
-      setResetCode(code);
-      setStep('verify');
-    }
-  };
-
-  const openWhatsAppReset = () => {
-    // نرسل الكود ورقم التليفون معاً في الرسالة للواتساب لسهولة التعرف عليه
-    const fullPhoneWithZero = `0${phone}`;
-    const message = encodeURIComponent(`${resetCode} ${fullPhoneWithZero}`);
-    const link = `https://wa.me/${ADMIN_WHATSAPP}?text=${message}`;
-    window.open(link, '_blank');
   };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -117,25 +92,12 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
     setError('');
 
     try {
-      // 1. Update Auth password
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       });
 
       if (updateError) throw updateError;
 
-      // 2. Invalidate the reset code in DB for security
-      const finalCode = resetCode || sessionStorage.getItem('yadawy_active_reset_code');
-      if (finalCode) {
-        await supabase
-          .from('phone_verifications')
-          .update({ status: 'completed' })
-          .eq('verification_code', finalCode);
-
-        sessionStorage.removeItem('yadawy_active_reset_code');
-      }
-
-      // 3. Success!
       setIsLoading(false);
       setStep('success');
 
@@ -143,7 +105,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
       window.location.hash = '';
 
       setTimeout(() => {
-        onSuccess(); // This should trigger AuthModal opening in App.tsx
+        onSuccess();
       }, 2500);
 
     } catch (err: any) {
@@ -190,7 +152,7 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
               disabled={isLoading}
               className="w-full py-3 rounded-xl bg-[#C97A57] text-white text-sm font-bold shadow-md hover:bg-[#b56846] flex items-center justify-center gap-2"
             >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'استعادة عبر واتساب'}
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'إرسال كود الاستعادة'}
             </button>
 
             {onBack && (
@@ -214,11 +176,12 @@ export const ResetPasswordView: React.FC<ResetPasswordViewProps> = ({ onSuccess,
               <input
                 type="text"
                 maxLength={6}
-                value={resetCode}
-                onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="------"
                 className="w-full py-4 text-center text-2xl font-black tracking-[0.5em] rounded-2xl bg-[#F6F4ED] border-2 border-[#E6E1D3] focus:border-[#C97A57] outline-none transition-all placeholder:opacity-30"
                 required
+                autoFocus
               />
             </div>
 

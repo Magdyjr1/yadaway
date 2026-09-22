@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Smartphone, CheckCircle2, ArrowRight, ShieldCheck, Loader2, MessageSquare } from 'lucide-react';
+import React, { useState } from 'react';
+import { Smartphone, CheckCircle2, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
 import { UserProfile } from '../types';
-import { updateProfile, createPhoneVerification, supabase, checkPhoneExists, fetchUserProfile } from '../services/supabase';
+import { sendOtpViaWhatsApp, verifyOtpCode, checkPhoneExists, fetchUserProfile } from '../services/supabase';
 
 interface OnboardingViewProps {
   user: UserProfile;
@@ -13,89 +13,50 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
   const [phone, setPhone] = useState(user.phone?.replace('+20', '') || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState<'phone' | 'verify' | 'success'>(user.phone ? 'verify' : 'phone');
-  const [verificationCode, setVerificationCode] = useState('');
+  const [step, setStep] = useState<'phone' | 'otp' | 'success'>(user.phone ? 'otp' : 'phone');
+  const [otpCode, setOtpCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  const ADMIN_WHATSAPP = '201275356468'; // Official Yadawy Bot Number
-
-  // 1. Listen for real-time verification status change
-  useEffect(() => {
-    if (step === 'verify' && verificationCode) {
-      // Since the profile is only created AFTER verification, we listen for INSERT into profiles
-      const channel = supabase
-        .channel('profile_creation')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${user.id}`
-          },
-          () => {
-            setStep('success');
-            setTimeout(() => {
-              // Re-fetch profile and complete onboarding
-              fetchUserProfile(user.id).then(updated => {
-                if (updated) onComplete(updated);
-              });
-            }, 2000);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [step, verificationCode, onComplete, user.id]);
-
-  // If we already have a phone from previous session, generate a code immediately
-  useEffect(() => {
-    if (user.phone && !verificationCode && step === 'verify') {
-      createPhoneVerification(user.id, user.phone).then(({ code }) => {
-        if (code) setVerificationCode(code);
-      });
-    }
-  }, [user.phone, user.id, verificationCode, step]);
-
-  const handleSavePhone = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate phone: 10 digits
+    // Validate phone: 10 digits after +20
     if (!/^\d{10}$/.test(phone)) {
       setError('يرجى إدخال 10 أرقام صحيحة بعد +20');
       return;
     }
 
     const fullPhone = `+20${phone}`;
-
     setIsLoading(true);
     setError('');
 
-    // Check if phone already exists and is verified
-    const exists = await checkPhoneExists(fullPhone);
-    if (exists) {
-      setError('هذا الرقم مفعل ومسجل بحساب آخر بالفعل، يرجى تسجيل الدخول');
+    try {
+      // 1. Check if phone already exists and is verified
+      const exists = await checkPhoneExists(fullPhone);
+      if (exists) {
+        setError('هذا الرقم مفعل ومسجل بحساب آخر بالفعل، يرجى تسجيل الدخول');
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Send OTP via Bot API
+      const { success, error: otpError } = await sendOtpViaWhatsApp(user.id, fullPhone, 'verify');
       setIsLoading(false);
-      return; // Stop processing immediately
-    }
 
-    // 1. Send OTP via Bot API
-    const { success, error: otpError } = await sendOtpViaWhatsApp(user.id, fullPhone, 'verify');
-    setIsLoading(false);
-
-    if (success) {
-      setStep('verify');
-    } else {
-      setError(otpError || 'حدث خطأ أثناء إرسال كود التحقق، يرجى المحاولة لاحقاً.');
+      if (success) {
+        setStep('otp');
+      } else {
+        setError(otpError || 'حدث خطأ أثناء إرسال كود التحقق، يرجى المحاولة لاحقاً.');
+      }
+    } catch (err) {
+      setIsLoading(false);
+      setError('فشل الاتصال بخدمة التحقق، يرجى المحاولة لاحقاً.');
     }
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (verificationCode.length !== 6) {
+    if (otpCode.length !== 6) {
       setError('يرجى إدخال كود التحقق المكون من 6 أرقام');
       return;
     }
@@ -103,18 +64,23 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
     setIsVerifying(true);
     setError('');
 
-    const { success, error: verifError } = await verifyOtpCode(user.id, verificationCode, 'verify');
-    setIsVerifying(false);
+    try {
+      const { success, error: verifError } = await verifyOtpCode(user.id, otpCode, 'verify');
 
-    if (success) {
-      setStep('success');
-      setTimeout(() => {
-        fetchUserProfile(user.id).then(updated => {
+      if (success) {
+        setStep('success');
+        // Small delay before redirecting to allow user to see success state
+        setTimeout(async () => {
+          const updated = await fetchUserProfile(user.id);
           if (updated) onComplete(updated);
-        });
-      }, 2000);
-    } else {
-      setError(verifError || 'كود التحقق غير صحيح، يرجى المحاولة مرة أخرى');
+        }, 2000);
+      } else {
+        setIsVerifying(false);
+        setError(verifError || 'كود التحقق غير صحيح، يرجى المحاولة مرة أخرى');
+      }
+    } catch (err) {
+      setIsVerifying(false);
+      setError('حدث خطأ أثناء التأكد من الكود، يرجى المحاولة لاحقاً.');
     }
   };
 
@@ -141,7 +107,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
                 أهلاً بك في يدوي! يرجى إضافة رقم الواتساب الخاص بك لتلقي كود التفعيل ومتابعة طلباتك.
               </p>
 
-              <form onSubmit={handleSavePhone} className="space-y-4">
+              <form onSubmit={handleSendOtp} className="space-y-4">
                 <div className="text-right">
                   <label className="text-xs font-bold text-gray-700 block mb-1">رقم الواتساب</label>
                   <div className="relative flex items-center" dir="ltr">
@@ -198,11 +164,12 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
                   <input
                     type="text"
                     maxLength={6}
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                     placeholder="------"
                     className="w-full py-4 text-center text-2xl font-black tracking-[0.5em] rounded-2xl bg-[#F6F4ED] border-2 border-[#E6E1D3] focus:border-[#254D3F] outline-none transition-all placeholder:opacity-30"
                     required
+                    autoFocus
                   />
                 </div>
 
