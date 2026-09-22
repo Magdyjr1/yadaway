@@ -74,28 +74,27 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
     setIsLoading(true);
     setError('');
 
+    setIsLoading(true);
+    setError('');
+
     // Check if phone already exists and is verified
-    const exists = await checkPhoneExists(fullPhone);
-    if (exists) {
-      setError('هذا الرقم مسجل به بالفعل، يرجى تسجيل الدخول.');
-      setIsLoading(false);
-      return;
+    try {
+      const exists = await checkPhoneExists(fullPhone);
+      if (exists) {
+        setError('هذا الرقم مفعل ومسجل بحساب آخر بالفعل، يرجى تسجيل الدخول.');
+        setIsLoading(false);
+        return;
+      }
+    } catch (e) {
+      // Ignore check errors and try to proceed
     }
 
-    // 1. Save phone to profile
-    const { error: updateError } = await updateProfile(user.id, { phone: fullPhone });
-    if (updateError) {
-      setError(updateError);
-      setIsLoading(false);
-      return;
-    }
-
-    // 2. Create verification request
+    // 1. Create verification request (We skip updateProfile until verified)
     const { code, error: verifError } = await createPhoneVerification(user.id, fullPhone);
     setIsLoading(false);
 
     if (verifError) {
-      setError(verifError);
+      setError('حدث خطأ أثناء إنشاء طلب التحقق، يرجى المحاولة لاحقاً.');
     } else if (code) {
       setVerificationCode(code);
       setStep('verify');
