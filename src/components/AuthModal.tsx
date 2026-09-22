@@ -39,7 +39,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'login',
   initialRole = 'customer'
 }) => {
-  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode === 'register' ? 'register' : 'login');
   const [role, setRole] = useState<UserRole>(initialRole);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -54,6 +54,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [workshopName, setWorkshopName] = useState('');
 
   if (!isOpen) return null;
+
+  // ── Forgot Password Logic ───────────────────────────────────────────────
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setErrorMessage('يرجى إدخال البريد الإلكتروني أولاً.');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const { error } = await resetPassword(email);
+    setIsLoading(false);
+
+    if (error) {
+      setErrorMessage(error);
+    } else {
+      setSuccessMessage('تم إرسال رابط استعادة كلمة المرور إلى بريدك الإلكتروني بنجاح!');
+    }
+  };
 
   // ── Google OAuth ──────────────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
@@ -108,11 +130,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         return;
       }
 
+      if (phone && !/^\d{10,11}$/.test(phone)) {
+        setErrorMessage('يرجى إدخال رقم هاتف صحيح');
+        setIsLoading(false);
+        return;
+      }
+
       const { user, error, needsEmailConfirmation } = await signUpWithEmail({
         email,
         password,
         name,
-        phone,
+        phone: phone ? (phone.startsWith('0') ? `+20${phone.substring(1)}` : `+20${phone}`) : undefined,
         governorate,
         role,
         workshopName: role === 'artisan' ? workshopName : undefined
@@ -151,7 +179,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <YadawyEmblem size={36} isDark={true} />
             <div>
               <h2 className="font-display font-bold text-lg text-white leading-tight">
-                {mode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
+                {mode === 'login' ? 'تسجيل الدخول' : mode === 'register' ? 'إنشاء حساب جديد' : 'استعادة كلمة المرور'}
               </h2>
               <p className="text-[11px] text-[#A3B8B0]">
                 سوق الحرف والفنون المصرية الأصيلة
@@ -168,7 +196,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Tabs for Login / Register */}
-        <div className="flex border-b border-[#E6E1D3] shrink-0">
+        <div className={`flex border-b border-[#E6E1D3] shrink-0 ${mode === 'forgot' ? 'hidden' : ''}`}>
           <button
             className={`flex-1 py-3 text-sm font-bold transition-all border-b-2 ${
               mode === 'login'
@@ -338,34 +366,73 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
 
             {/* Password Field */}
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700 block">كلمة المرور</label>
-              <div className="relative">
-                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors text-left"
-                  dir="ltr"
-                  required
-                />
+            {mode !== 'forgot' && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 block">كلمة المرور</label>
+                  {mode === 'login' && (
+                    <button
+                      type="button"
+                      onClick={() => setMode('forgot')}
+                      className="text-[10px] font-bold text-[#C97A57] hover:underline"
+                    >
+                      نسيت كلمة السر؟
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors text-left"
+                    dir="ltr"
+                    required
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
+              onClick={mode === 'forgot' ? handleForgotPassword : undefined}
               className="w-full py-3 px-4 mt-2 rounded-xl bg-[#254D3F] hover:bg-[#1b382e] text-white text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-60 flex items-center justify-center"
             >
               {isLoading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                <span>{mode === 'login' ? 'تسجيل الدخول' : 'تأكيد إنشاء الحساب'}</span>
+                <span>
+                  {mode === 'login' ? 'تسجيل الدخول' : mode === 'register' ? 'تأكيد إنشاء الحساب' : 'استعادة عبر واتساب'}
+                </span>
               )}
             </button>
+
+            {mode === 'login' && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  window.dispatchEvent(new CustomEvent('navigate-to-reset'));
+                }}
+                className="w-full text-center text-[10px] font-bold text-[#C97A57] hover:underline mt-2"
+              >
+                استعادة كلمة المرور عبر واتساب 💬
+              </button>
+            )}
+
+            {mode === 'forgot' && (
+              <button
+                type="button"
+                onClick={() => setMode('login')}
+                className="w-full text-center text-xs font-bold text-[#254D3F] hover:underline"
+              >
+                العودة لتسجيل الدخول
+              </button>
+            )}
           </form>
 
           {/* Divider */}

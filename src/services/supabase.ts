@@ -79,11 +79,31 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
       governorate: profile?.governorate || user?.user_metadata?.governorate || 'القاهرة',
       provider: (user?.app_metadata?.provider === 'google' ? 'google' : 'email') as 'google' | 'email',
       isVerified: Boolean(user?.email_confirmed_at),
+      isPhoneVerified: Boolean(profile?.is_phone_verified),
       createdAt: profile?.created_at || user?.created_at || new Date().toISOString()
     };
   } catch (err) {
     console.error('fetchUserProfile error:', err);
     return null;
+  }
+}
+
+// Update user profile
+export async function updateProfile(userId: string, updates: Partial<UserProfile>): Promise<{ error: string | null }> {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        phone: updates.phone,
+        governorate: updates.governorate,
+        name: updates.name,
+        is_phone_verified: updates.isPhoneVerified,
+      })
+      .eq('id', userId);
+
+    return { error: error ? error.message : null };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
 
@@ -233,3 +253,71 @@ export async function signOutUser(): Promise<void> {
     console.warn('Sign out warning:', err);
   }
 }
+
+// --- WhatsApp Verification & Account Security ---
+
+/**
+ * Checks if a phone number is already verified by another user
+ */
+export async function checkPhoneExists(phone: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('phone', phone)
+      .eq('is_phone_verified', true)
+      .maybeSingle();
+
+    if (error) return false;
+    return !!data;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Creates a time-sensitive verification request
+ */
+export async function createPhoneVerification(userId: string, phoneNumber: string, mode: 'verify' | 'reset' = 'verify'): Promise<{ code: string | null; error: string | null }> {
+  try {
+    const prefix = mode === 'verify' ? 'VERIFY-' : 'RESET-';
+    const code = `${prefix}${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const { error } = await supabase.from('phone_verifications').insert({
+      user_id: userId,
+      phone_number: phoneNumber,
+      verification_code: code,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    });
+
+    return { code: error ? null : code, error: error ? error.message : null };
+  } catch (err) {
+    return { code: null, error: 'Failed to create verification request' };
+  }
+}
+
+/**
+ * Resets password flow via WhatsApp
+ */
+export async function initiatePasswordResetWhatsApp(phone: string): Promise<{ code: string | null; error: string | null }> {
+  try {
+    // 1. Find user by phone
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('phone', phone)
+      .eq('is_phone_verified', true)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      return { code: null, error: 'هذا الرقم غير مرتبط بحساب مفعل.' };
+    }
+
+    // 2. Create a reset request
+    return await createPhoneVerification(profile.id, phone, 'reset');
+  } catch (err) {
+    return { code: null, error: 'حدث خطأ أثناء محاولة استعادة كلمة المرور.' };
+  }
+}
+

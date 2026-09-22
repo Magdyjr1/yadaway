@@ -20,7 +20,7 @@ import { CartItem, UserProfile, Category, DEFAULT_USER_AVATAR, Product, Artisan,
 import { YadawyLogo } from './YadawyLogo';
 import { SmartSearchModal } from './SmartSearchModal';
 
-export type AppView = 'home' | 'product' | 'dashboard' | 'checkout' | 'favorites' | 'catalog' | 'storefront' | 'tracking' | 'support' | 'bazaar' | 'vendor-showcase' | 'super-admin' | 'legal';
+export type AppView = 'home' | 'product' | 'dashboard' | 'checkout' | 'favorites' | 'catalog' | 'storefront' | 'tracking' | 'support' | 'bazaar' | 'vendor-showcase' | 'super-admin' | 'legal' | 'reset-password';
 
 interface NavbarProps {
   currentView: AppView;

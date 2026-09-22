@@ -184,6 +184,7 @@ export interface UserProfile {
   bio?: string;
   whatsapp?: string;
   isVerified?: boolean;
+  isPhoneVerified?: boolean;
   createdAt: string;
 }
 

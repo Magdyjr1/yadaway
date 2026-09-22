@@ -35,6 +35,8 @@ import { ShowcaseDetailModal } from './components/ShowcaseDetailModal';
 import { Footer } from './components/Footer';
 import { AuthModal } from './components/AuthModal';
 import { UserProfileModal } from './components/UserProfileModal';
+import { OnboardingView } from './components/OnboardingView';
+import { ResetPasswordView } from './components/ResetPasswordView';
 // import { SuperAdminDashboard } from './components/SuperAdminDashboard';
 // import { LegalView } from './components/LegalView';
 import { supabase, signOutUser, fetchUserProfile } from './services/supabase';
@@ -236,7 +238,10 @@ export default function App() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setCurrentView('reset-password');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (session?.user) {
         const profile = await fetchUserProfile(session.user.id);
         if (profile) {
           setCurrentUser(profile);
@@ -271,8 +276,16 @@ export default function App() {
         alert('🌿 تم الدخول إلى لوحة التحكم العليا للمشرف (Super Admin Dashboard)');
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // --- Listen for reset navigation event ---
+  useEffect(() => {
+    const handleResetNav = () => {
+      setCurrentView('reset-password');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    window.addEventListener('navigate-to-reset', handleResetNav);
+    return () => window.removeEventListener('navigate-to-reset', handleResetNav);
   }, []);
 
   // Persist products
@@ -846,7 +859,15 @@ export default function App() {
 
       {/* Main Content Router */}
       <main className="flex-1">
-        {currentView === 'home' && (
+        {currentUser && !currentUser.isPhoneVerified && currentView !== 'support' ? (
+          <OnboardingView
+            user={currentUser}
+            onComplete={(updated) => handleUpdateUser(updated)}
+            onLogout={handleLogout}
+          />
+        ) : (
+          <>
+            {currentView === 'home' && (
           <HomeView
             products={products}
             categories={categories}
@@ -1136,6 +1157,13 @@ export default function App() {
           />
         )}
 
+        {/* Reset Password View */}
+        {currentView === 'reset-password' && (
+          <ResetPasswordView
+            onSuccess={() => handleOpenAuth('login')}
+          />
+        )}
+
         {/* Dedicated Vendor Showcase Page */}
         {currentView === 'vendor-showcase' && (() => {
           const portfolio = (vendorPortfolios || []).find(p => p.artisanId === selectedPortfolioArtisanId) || (vendorPortfolios || [])[0];
@@ -1179,6 +1207,8 @@ export default function App() {
             />
           );
         })()}
+        </>
+        )}
       </main>
 
       {/* Auth Modal */}
