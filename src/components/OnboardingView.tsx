@@ -79,7 +79,7 @@ export const OnboardingView: React.FC<OnboardingViewProps> = ({ user, onComplete
     if (exists) {
       setError('هذا الرقم مفعل ومسجل بحساب آخر بالفعل، يرجى تسجيل الدخول');
       setIsLoading(false);
-      return;
+      return; // Stop processing immediately
     }
 
     // 1. Create verification request (We skip updateProfile until verified)

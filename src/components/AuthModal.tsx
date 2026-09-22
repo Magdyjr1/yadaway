@@ -344,14 +344,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </>
             )}
 
-            {/* Email Field */}
+            {/* Email / Phone Field */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700 block">البريد الإلكتروني</label>
+              <label className="text-xs font-bold text-gray-700 block">
+                {mode === 'login' ? 'البريد الإلكتروني أو رقم الهاتف' : 'البريد الإلكتروني'}
+              </label>
               <div className="relative">
-                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                {mode === 'login' ? (
+                  <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                ) : (
+                  <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                )}
                 <input
-                  type="email"
-                  placeholder="name@example.com"
+                  type={mode === 'login' ? 'text' : 'email'}
+                  placeholder={mode === 'login' ? 'example@mail.com أو 010...' : 'name@example.com'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors text-left"
@@ -359,6 +365,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   required
                 />
               </div>
+              {mode === 'login' && (
+                <p className="text-[9px] text-gray-400 mt-0.5">يمكنك الدخول بالبريد أو برقم الموبايل الموثق</p>
+              )}
             </div>
 
             {/* Password Field */}
