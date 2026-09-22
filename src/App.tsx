@@ -638,13 +638,9 @@ export default function App() {
     } catch {
       // ignore
     }
-    // If just verified, redirect to dashboard or home
+    // If just verified, redirect to Home Page for everyone
     if (updated.isPhoneVerified) {
-      if (updated.role === 'artisan') {
-        setCurrentView('dashboard');
-      } else {
-        setCurrentView('home');
-      }
+      setCurrentView('home');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };

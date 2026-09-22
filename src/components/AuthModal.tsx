@@ -8,6 +8,7 @@ import {
   Lock,
   User,
   Phone,
+  Smartphone,
   MapPin,
   Store,
   ShoppingBag
@@ -347,17 +348,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* Email / Phone Field */}
             <div className="space-y-1">
               <label className="text-xs font-bold text-gray-700 block">
-                {mode === 'login' ? 'البريد الإلكتروني أو رقم الهاتف' : 'البريد الإلكتروني'}
+                {mode === 'login' ? 'رقم الهاتف' : 'البريد الإلكتروني'}
               </label>
               <div className="relative">
                 {mode === 'login' ? (
-                  <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Smartphone className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 ) : (
                   <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 )}
                 <input
-                  type={mode === 'login' ? 'text' : 'email'}
-                  placeholder={mode === 'login' ? 'example@mail.com أو 010...' : 'name@example.com'}
+                  type="text"
+                  placeholder={mode === 'login' ? '01xxxxxxxxx' : 'name@example.com'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full text-xs py-2.5 pr-9 pl-3 rounded-xl bg-white border border-[#E6E1D3] focus:outline-none focus:border-[#254D3F] transition-colors text-left"
@@ -366,7 +367,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 />
               </div>
               {mode === 'login' && (
-                <p className="text-[9px] text-gray-400 mt-0.5">يمكنك الدخول بالبريد أو برقم الموبايل الموثق</p>
+                <p className="text-[9px] text-gray-400 mt-0.5">سجل دخولك برقم الموبايل الموثق وكلمة المرور</p>
               )}
             </div>
 
